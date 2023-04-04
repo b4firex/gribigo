@@ -30,6 +30,8 @@ import (
 	"github.com/openconfig/gribigo/constants"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/credentials"
 	"lukechampine.com/uint128"
 
@@ -322,6 +324,13 @@ func (c *Client) Connect(ctx context.Context) error {
 			// reading is done, so write should shut down too.
 			c.shut.Store(true)
 			return true
+		}
+		if status.Code(err)==codes.Unavailable { 
+			log.Errorf("got error receiving message, %v", err)
+			c.addReadErr(err)
+			// the connection is closed, so we need to set shut to true to close goroutines
+			c.shut.Store(true)
+			return false
 		}
 		if err != nil {
 			log.Errorf("got error receiving message, %v", err)
